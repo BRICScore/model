@@ -6,12 +6,19 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 from sklearn.inspection import DecisionBoundaryDisplay
 from sklearn.svm import SVC
+
+import torch
+from torch import nn
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix
+
 import json
 import os
 
 FEATURES_PATH = './data/features'
 CLEAN_PATH = '/data/clean'
 RAW_PATH = '/data/raw'
+EPOCHS = 10_000
 
 class FeatureData():
     def __init__(self):
@@ -167,16 +174,115 @@ def SVM_classification(feature_data: FeatureData, best_pair: tuple[int, int]):
         plt.ylabel(two)
         plt.show()
 
+def create_person_map(identifier_list):
+    label_assignment = {}
+    i = 0
+    for identifier in identifier_list:
+        label_assignment[identifier] = i
+        i += 1
+    return label_assignment
+
+def NN_classification(feature_data: FeatureData, best_pair: tuple[int, int]) -> None:
+    cut_features = torch.tensor(feature_data.features[:,np.array([best_pair[0], best_pair[1]])])
+    temp_labels = np.zeros(cut_features.shape[0])
+    person_label_map = create_person_map(identifier_list=feature_data.person_initials)
+    for person in feature_data.person_initials:
+        for index in feature_data.person_indices[person]:
+            temp_labels[index] = person_label_map[person]
+    print(temp_labels)
+    scaler = StandardScaler()
+    ##X = torch.tensor(scaler.fit_transform(feature_data.features[:,np.array([best_pair[0], best_pair[1]])]), dtype=torch.float32)
+    X = torch.tensor(feature_data.features[:,np.array([best_pair[0], best_pair[1]])], dtype=torch.float32)
+    y = torch.tensor(temp_labels, dtype=torch.long)
+
+    class FullyConnectedNNclassifier(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.net = nn.Sequential(
+                nn.Linear(2, 6),
+                nn.ReLU(),
+                nn.Linear(6,10),
+                nn.ReLU(),
+                nn.Linear(10, 4)
+            )
+
+        def forward(self, x):
+            return self.net(x) 
+    model = FullyConnectedNNclassifier()
+
+    # ---- loss + optimizer ----
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+    # ---- training loop ----
+    for epoch in range(EPOCHS):
+        optimizer.zero_grad()
+    
+        outputs = model(X)
+        loss = criterion(outputs, y)
+    
+        loss.backward()
+        optimizer.step()
+
+        if epoch % 200 == 0:
+            print(f"Epoch {epoch}, Loss: {loss.item():.4f}")
+    
+    with torch.no_grad():
+        logits = model(X)
+        preds = torch.argmax(logits, dim=1)
+        acc = (preds == y).float().mean()
+        print(f"Model accuracy is: {acc.item()}")
+
+        cm = confusion_matrix(y.numpy(), preds.numpy())
+        print(cm)
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+        disp.plot(cmap="Blues")
+
+        plt.title("Confusion Matrix")
+        plt.show()
+
+        correct = (y == preds)
+        colors = ["red", "blue", "green", "purple"]
+        class_names = ["DS", "JD", "MJ", "MK"]
+        plt.figure(figsize=(6,5))
+
+        # plot all classes
+        for i in range(4):
+            plt.scatter(
+                X[y == i, 0],
+                X[y == i, 1],
+                color=colors[i],
+                label=class_names[i],
+                edgecolor="k",
+                alpha=0.7
+            )
+
+        # overlay misclassified points
+        plt.scatter(
+            X[~correct, 0],
+            X[~correct, 1],
+            facecolors="none",
+            edgecolors="black",
+            s=120,
+            linewidths=1,
+            label="Misclassified"
+        )
+
+        plt.legend()
+        plt.xlabel(feature_data.feature_keys[best_pair[0]])
+        plt.ylabel(feature_data.feature_keys[best_pair[1]])
+        plt.title("Classes + Misclassified Points")
+        plt.show()
+
+
 def specific_features_classifier():
     feature_data = FeatureData()
 
     feature_data.features = feature_loading(feature_data)
-    # print(feature_data.features)
-    # print(feature_data.features_scaled)
-    # print(feature_data.features.shape)
     cov_matrix = np.cov(feature_data.features_scaled, rowvar=False)
     best_pair, best_value = establish_best_features(feature_data=feature_data, cov=cov_matrix)
-    SVM_classification(feature_data=feature_data, best_pair=best_pair)
+    # SVM_classification(feature_data=feature_data, best_pair=best_pair)
+    NN_classification(feature_data=feature_data, best_pair=best_pair)
 
 def main():
     specific_features_classifier()
