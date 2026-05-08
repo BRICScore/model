@@ -1,5 +1,5 @@
 import scipy
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupShuffleSplit, train_test_split
 import torch
 
 from classifiers.config import *
@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import json
 
-EPOCHS = 1
-LR = 0.0001
+EPOCHS = 50
+LR = 0.001
 BATCH_SIZE = 32
 LAYERS = 3
 SEED = 42
@@ -152,80 +152,74 @@ class LSTMModel(nn.Module):
             hidden_size=hidden_dim,
             num_layers=layer_dim,
             batch_first=True,
-            dropout=dropout
+            dropout=dropout,
+            bidirectional=True
         )
         self.head = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
+            nn.Linear(hidden_dim * 2, 64),
             nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(64, output_dim)
         )
 
     def forward(self, x):
-        out, (hn, cn) = self.lstm(x)
-        out = self.head(out[:, -1, :])
-        return out, hn, cn
+        out, _ = self.lstm(x)
+        out = torch.mean(out, dim=1)
+        out = self.head(out)
+        return out
 
 def labeled_samples(data_segments_dir: Path):
     files = list(data_segments_dir.glob("*.jsonl"))
-    samples, labels = [], []
-    unique_labels = set([get_person_form_filename(f.name) for f in files])
-    print(unique_labels)
-
+    samples, labels, groups = [], [], []
+    
+    unique_labels = sorted(set([get_person_form_filename(f.name) for f in files]))
     label_to_id = {label: idx for idx, label in enumerate(unique_labels)}
     id_to_label = {idx: label for label, idx in label_to_id.items()}
+    print(unique_labels)
 
     for file in files:
+        source_file_id = "_".join(file.name.split("_")[:2] + file.name.split("_")[3:5])
+        # source_file_id = "_".join(file.name.split("_")[:2]
         _, adc_outputs = load_segment_file(file)
-        sample = adc_outputs.astype(np.float32)
-        mean = np.mean(sample, axis=0)
-        std = sample.std(axis=0) + 1e-8
-        sample = (sample - mean) / std
-        samples.append(sample)
+        samples.append(adc_outputs.astype(np.float32))
         labels.append(label_to_id[get_person_form_filename(file.name)])
+        groups.append(source_file_id)
+        # print(groups)
 
-    return samples, labels, label_to_id, id_to_label
+    return samples, labels, groups, label_to_id, id_to_label
 
-def create_dataloaders(samples, labels, batch_size=BATCH_SIZE, seed=SEED):
-    np.random.seed(seed)
-    indices = np.arange(len(samples))
-    labels_np = np.array(labels)
-
-    train_idx, temp_idx, y_train, y_temp = train_test_split(
-        indices,labels_np,
-        test_size=0.30,
-        random_state=seed,
-        stratify=labels_np
-    )
-
-    val_idx, test_idx, y_val, y_test = train_test_split(
-        temp_idx,
-        y_temp,
-        test_size=0.50,
-        random_state=seed,
-        stratify=y_temp
-    )
-
-    x_train = [samples[i] for i in train_idx]
-    y_train = [labels[i] for i in train_idx]
-    x_val = [samples[i] for i in val_idx]
-    y_val = [labels[i] for i in val_idx]
-    x_test = [samples[i] for i in test_idx]
-    y_test = [labels[i] for i in test_idx]
+def create_dataloaders(samples, labels, groups, batch_size=BATCH_SIZE, seed=SEED):
+    gss = GroupShuffleSplit(test_size=0.3, n_splits=1, random_state=seed)
     
-    train_ds = SegmentDataset(x_train, y_train)
-    val_ds = SegmentDataset(x_val, y_val)
-    test_ds = SegmentDataset(x_test, y_test)
+    train_idx, temp_idx = next(gss.split(samples, labels, groups))
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False)
-    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False)
+    temp_samples = np.array([samples[i] for i in temp_idx], dtype=object)
+    temp_labels = np.array([labels[i] for i in temp_idx])
+    temp_groups = np.array([groups[i] for i in temp_idx])
 
-    return train_loader, val_loader, test_loader
+    gss_val = GroupShuffleSplit(n_splits=1, test_size=0.5, random_state=seed)
+    val_idx_sub, test_idx_sub = next(gss_val.split(temp_samples, temp_labels, groups=temp_groups))
+
+    x_train_raw = [samples[i] for i in train_idx]
+    all_train_data = np.concatenate(x_train_raw, axis=0)
+    mean = np.mean(all_train_data, axis=0)
+    std = np.std(all_train_data, axis=0) + 1e-8
+    
+    def norm(data_list):
+        return [(s - mean) / std for s in data_list]
+
+    train_ds = SegmentDataset(norm(x_train_raw), [labels[i] for i in train_idx])
+    val_ds = SegmentDataset(norm([temp_samples[i] for i in val_idx_sub]), [temp_labels[i] for i in val_idx_sub])
+    test_ds = SegmentDataset(norm([temp_samples[i] for i in test_idx_sub]), [temp_labels[i] for i in test_idx_sub])
+
+    return (DataLoader(train_ds, batch_size=batch_size, shuffle=True),
+            DataLoader(val_ds, batch_size=batch_size),
+            DataLoader(test_ds, batch_size=batch_size))
 
 def train_model(model, train_loader, val_loader, epochs=EPOCHS, lr=LR):
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode="max", patience=5, factor=0.5)
 
     for epoch in range(epochs):
         model.train()
@@ -233,7 +227,7 @@ def train_model(model, train_loader, val_loader, epochs=EPOCHS, lr=LR):
         for x_batch, y_batch in train_loader:
             x_batch, y_batch = x_batch.to(DEVICE), y_batch.to(DEVICE)
             optimizer.zero_grad()
-            outputs, _, _ = model(x_batch)
+            outputs = model(x_batch)
             loss = criterion(outputs, y_batch)
             loss.backward()
             optimizer.step()
@@ -244,17 +238,18 @@ def train_model(model, train_loader, val_loader, epochs=EPOCHS, lr=LR):
         with torch.no_grad():
             for x_batch, y_batch in val_loader:
                 x_batch, y_batch = x_batch.to(DEVICE), y_batch.to(DEVICE)
-                outputs, _, _ = model(x_batch)
+                outputs = model(x_batch)
                 _, predicted = torch.max(outputs.data, 1)
                 total += y_batch.size(0)
                 correct += (predicted == y_batch).sum().item()
 
         accuracy = correct / total
+        scheduler.step(accuracy)
         print(f"Epoch {epoch+1}/{epochs}, Loss: {total_loss/len(train_loader):.4f}, Validation Accuracy: {accuracy:.4f}")
 
 def lstm_classification(data_segments_dir: Path):
-    samples, labels, label_to_id, id_to_label = labeled_samples(data_segments_dir)
-    train_loader, val_loader, test_loader = create_dataloaders(samples, labels, batch_size=8)
+    samples, labels, groups, label_to_id, id_to_label = labeled_samples(data_segments_dir)
+    train_loader, val_loader, test_loader = create_dataloaders(samples, labels, groups, batch_size=8)
 
     model = LSTMModel(
         input_dim=ADC_COUNT,
@@ -270,31 +265,34 @@ def lstm_classification(data_segments_dir: Path):
     return model, test_loader, label_to_id, id_to_label
 
 def results_and_plot(model, test_loader, label_to_id, id_to_label):
-    # copilot zrobił vizualizację
     model.eval()
     y_true = []
     y_pred = []
 
     with torch.no_grad():
-        for x_batch, y_batch in test_loader:
-            x_batch, y_batch = x_batch.to(DEVICE), y_batch.to(DEVICE)
-            outputs, _, _ = model(x_batch)
+        for batch in test_loader:
+            x_batch, y_batch = batch[0].to(DEVICE), batch[1].to(DEVICE)
+            outputs = model(x_batch)
             _, predicted = torch.max(outputs, 1)
             y_true.extend(y_batch.cpu().numpy().tolist())
             y_pred.extend(predicted.cpu().numpy().tolist())
 
-    class_names = [id_to_label[i] for i in range(len(id_to_label))]
-    cm = confusion_matrix(y_true, y_pred)
+    all_labels_ids = sorted(list(id_to_label.keys()))
+    class_names = [id_to_label[i] for i in all_labels_ids]
+    cm = confusion_matrix(y_true, y_pred, labels=all_labels_ids)
 
-    print("\n" + "="*60)
-    print(y_true)
-    print(y_pred)
     print("\n" + "="*60)
     print("TEST RESULTS")
     print("="*60)
     print(f"Test Accuracy: {sum(np.array(y_true) == np.array(y_pred)) / len(y_true):.4f}")
     print("\nClassification Report:")
-    print(classification_report(y_true, y_pred, target_names=class_names, digits=4, zero_division=0))
+    print(classification_report(
+        y_true, 
+        y_pred, 
+        labels=all_labels_ids,
+        target_names=class_names, 
+        digits=4, 
+        zero_division=0))
 
     # Confusion Matrix
     plt.figure(figsize=(6, 5))
