@@ -15,7 +15,7 @@ import json
 
 EPOCHS = 50
 LR = 0.001
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 LAYERS = 3
 SEED = 42
 HIDDEN_SIZE = 128
@@ -178,7 +178,7 @@ def labeled_samples(data_segments_dir: Path):
     print(unique_labels)
 
     for file in files:
-        source_file_id = "_".join(file.name.split("_")[:2] + file.name.split("_")[3:5])
+        source_file_id = "_".join(file.name.split("_")[:2] + file.name.split("_")[3:5] + [file.name.split("_")[5].split(".")[0]])
         # source_file_id = "_".join(file.name.split("_")[:2]
         _, adc_outputs = load_segment_file(file)
         samples.append(adc_outputs.astype(np.float32))
@@ -189,32 +189,32 @@ def labeled_samples(data_segments_dir: Path):
     return samples, labels, groups, label_to_id, id_to_label
 
 def create_dataloaders(samples, labels, groups, batch_size=BATCH_SIZE, seed=SEED):
-    gss = GroupShuffleSplit(test_size=0.3, n_splits=1, random_state=seed)
-    
-    train_idx, temp_idx = next(gss.split(samples, labels, groups))
+    x_train_raw, x_test_raw, y_train, y_test = train_test_split(
+        samples, 
+        labels, 
+        test_size=0.20, 
+        stratify=labels, 
+        random_state=seed
+    )
 
-    temp_samples = np.array([samples[i] for i in temp_idx], dtype=object)
-    temp_labels = np.array([labels[i] for i in temp_idx])
-    temp_groups = np.array([groups[i] for i in temp_idx])
-
-    gss_val = GroupShuffleSplit(n_splits=1, test_size=0.5, random_state=seed)
-    val_idx_sub, test_idx_sub = next(gss_val.split(temp_samples, temp_labels, groups=temp_groups))
-
-    x_train_raw = [samples[i] for i in train_idx]
     all_train_data = np.concatenate(x_train_raw, axis=0)
     mean = np.mean(all_train_data, axis=0)
-    std = np.std(all_train_data, axis=0) + 1e-8
+    std = np.std(all_train_data, axis=0) + 1e-9
     
     def norm(data_list):
         return [(s - mean) / std for s in data_list]
 
-    train_ds = SegmentDataset(norm(x_train_raw), [labels[i] for i in train_idx])
-    val_ds = SegmentDataset(norm([temp_samples[i] for i in val_idx_sub]), [temp_labels[i] for i in val_idx_sub])
-    test_ds = SegmentDataset(norm([temp_samples[i] for i in test_idx_sub]), [temp_labels[i] for i in test_idx_sub])
+    train_ds = SegmentDataset(norm(x_train_raw), y_train)
+    test_ds = SegmentDataset(norm(x_test_raw), y_test)
+
+    print(f"Total samples: {len(samples)}")
+    print(f"Train samples: {len(train_ds)}, Test samples: {len(test_ds)}")
+    
+    from collections import Counter
+    print(f"Test Class Distribution: {Counter(y_test)}")
 
     return (DataLoader(train_ds, batch_size=batch_size, shuffle=True),
-            DataLoader(val_ds, batch_size=batch_size),
-            DataLoader(test_ds, batch_size=batch_size))
+            DataLoader(test_ds, batch_size=batch_size, shuffle=False))
 
 def train_model(model, train_loader, val_loader, epochs=EPOCHS, lr=LR):
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
@@ -249,7 +249,7 @@ def train_model(model, train_loader, val_loader, epochs=EPOCHS, lr=LR):
 
 def lstm_classification(data_segments_dir: Path):
     samples, labels, groups, label_to_id, id_to_label = labeled_samples(data_segments_dir)
-    train_loader, val_loader, test_loader = create_dataloaders(samples, labels, groups, batch_size=8)
+    train_loader, test_loader = create_dataloaders(samples, labels, groups, batch_size=8)
 
     model = LSTMModel(
         input_dim=ADC_COUNT,
@@ -261,7 +261,7 @@ def lstm_classification(data_segments_dir: Path):
 
     model.to(DEVICE)
     print(DEVICE)
-    train_model(model, train_loader, val_loader, epochs=EPOCHS, lr=LR)
+    train_model(model, train_loader, test_loader, epochs=EPOCHS, lr=LR)
     return model, test_loader, label_to_id, id_to_label
 
 def results_and_plot(model, test_loader, label_to_id, id_to_label):
