@@ -105,27 +105,32 @@ from pathlib import Path
 def get_feature_data(feature_data: FeatureData, metadata_rows: list):
     feature_data_folder = Path(FEATURES_PATH)
     feature_data_folder.mkdir(parents=True, exist_ok=True)
+    for i, metadata_row in enumerate(metadata_rows):
 
-    for row_index, row in enumerate(feature_data.features):
         metadata = {}
         # TODO: this is very temporary, for now db returns 3 different files per querry (for my id)
         # and so i have to choose which metadata to use
         # should there be only one file per querry or the 3 is normal?
-        metadata["person_id"] = metadata_rows[0]["person_id"]
-        metadata["condition"] = metadata_rows[0]["condition"]
-        metadata["activity"] = metadata_rows[0]["activity"]
+        metadata["person_id"] = metadata_rows[i]["person_id"]
+        metadata["condition"] = metadata_rows[i]["condition"]
+        metadata["activity"] = metadata_rows[i]["activity"]
 
-        record = {}
-        for feature_index, feature_name in feature_data.feature_keys.items():
-            value = row[feature_index]
-            if hasattr(value, "item"):
-                value = value.item()
-            record[feature_name] = value
-
-        out_path = feature_data_folder / f"features_{metadata['person_id']}_{row_index}.jsonl"
+        out_path = feature_data_folder / f"features_{metadata["person_id"]}.jsonl"
         with out_path.open("w", encoding="utf-8") as f:
             f.write(json.dumps(metadata) + "\n")
-            f.write(json.dumps(record) + "\n")
+
+        for row_index, row in enumerate(feature_data.features[feature_data.person_indices[metadata["person_id"]],:]):
+
+            record = {}
+            for feature_index, feature_name in feature_data.feature_keys.items():
+                value = row[feature_index]
+                if hasattr(value, "item"):
+                    value = value.item()
+                record[feature_name] = value
+
+            out_path = feature_data_folder / f"features_{metadata['person_id']}.jsonl"
+            with out_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(record) + "\n")
 
 def parser_setup():
     parser = argparse.ArgumentParser(description="Visualization work mode information")
@@ -139,7 +144,6 @@ def main():
     parser = parser_setup()
     args = parser.parse_args()
 
-    dotenv.load_dotenv()
     dbh = DatabaseHandler()
     dbh.downloadMeasurement()
 
