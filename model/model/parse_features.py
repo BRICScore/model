@@ -5,6 +5,11 @@ from pathlib import Path
 from torch import Tensor, tensor
 import torch
 import numpy as np
+from sklearn.preprocessing import StandardScaler
+
+def scale_data(data: np.ndarray) -> np.ndarray:
+    scaler = StandardScaler()
+    return scaler.fit_transform(data)
 
 def create_indices_for_features(record: str) -> dict:
     feature_keys = {}
@@ -58,11 +63,13 @@ def parse_features_from_data() -> ModelData:
                     feature_vector = parse_record(record)
                     data.append(feature_vector)
                     record = f.readline()
+            people_keys[person_index] = metadata["person_id"]
             person_index += 1
-    np_data = np.array(data)
+    model_wrapper.feature_keys = feature_keys
+    model_wrapper.people_keys = people_keys
+    np_data = np.array(scale_data(np.array(data)))
     np_labels = np.array(labels)
     feature_data = FeatureData(data=tensor(np_data, dtype=torch.float32), labels=tensor(np_labels, dtype=torch.int))
-    model_data = ModelData(feature_data=feature_data)
-    model_data.model_wrapper = model_wrapper
+    model_data = ModelData(feature_data=feature_data, model_wrapper=model_wrapper)
     return model_data
 

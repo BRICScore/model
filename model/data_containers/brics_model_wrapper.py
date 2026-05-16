@@ -7,8 +7,8 @@ class BRICSModelWrapper:
     def __init__(self) -> None:
         self.model: Optional[nn.Module] = None
         self.parameters: Optional[dict]
-        self.people_keys: Optional[dict]
-        self.feature_keys: Optional[dict]
+        self.people_keys = {}
+        self.feature_keys = {}
     
     def get_person(self, label: int) -> Optional[str]:
         if self.people_keys:
