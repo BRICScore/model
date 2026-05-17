@@ -8,6 +8,7 @@ class BRICSModelWrapper:
     def __init__(self, model: nn.Module|None, learning_rate: float = 0.001) -> None:
         self.model: Optional[nn.Module] = model
         self.parameters: Optional[dict] = {
+            # TODO: those will have to be read from here and handled properly in the future
             "optimizer": "Adam",
             "criterion": "CrossEntropyLoss",
             "learning_rate": learning_rate
@@ -22,6 +23,7 @@ class BRICSModelWrapper:
             return None
     
     def identify_person(self, feedData):
+        # TODO: UI will call this, so we skip this for now
         pass
 
     def save_model(self, filepath: Path):
