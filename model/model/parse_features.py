@@ -59,7 +59,7 @@ def parse_features_from_data() -> ModelData:
                 metadata = json.loads(f.readline())
                 record = f.readline()
                 while record:
-                    labels.append([person_index])
+                    labels.append(person_index)
                     feature_vector = parse_record(record)
                     data.append(feature_vector)
                     record = f.readline()
@@ -69,7 +69,9 @@ def parse_features_from_data() -> ModelData:
     model_wrapper.people_keys = people_keys
     np_data = np.array(scale_data(np.array(data)))
     np_labels = np.array(labels)
-    feature_data = FeatureData(data=tensor(np_data, dtype=torch.float32), labels=tensor(np_labels, dtype=torch.int))
+    labele = tensor(np_labels, dtype=torch.long)
+    print(labele.shape)
+    feature_data = FeatureData(data=tensor(np_data, dtype=torch.float32), labels=labele)
     model_data = ModelData(feature_data=feature_data, model_wrapper=model_wrapper)
     return model_data
 

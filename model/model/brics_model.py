@@ -17,5 +17,5 @@ class BRICSModel(nn.Module):
                 nn.Linear(64, n_classes)
             )
         
-        def forward(self, x):
-            return self.network(x)
+    def forward(self, x):
+        return self.network(x)

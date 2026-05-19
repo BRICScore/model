@@ -6,7 +6,7 @@ from typing import Optional
 class BRICSModelWrapper:
     def __init__(self) -> None:
         self.model: Optional[nn.Module] = None
-        self.parameters: Optional[dict]
+        self.parameters = {}
         self.people_keys = {}
         self.feature_keys = {}
     
