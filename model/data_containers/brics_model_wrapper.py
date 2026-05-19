@@ -53,7 +53,7 @@ class BRICSModelWrapper:
         # print(results)
         # print(most_common_label)
 
-        return most_common_label
+        return str(most_common_label)
 
     def save_model(self, filepath: Path):
         if self.model is None:
