@@ -40,7 +40,7 @@ def parse_record(record):
     return feature_vector
 
 def parse_features_from_data() -> ModelData:
-    model_wrapper = BRICSModelWrapper()
+    model_wrapper = BRICSModelWrapper(None)
     people_keys = {}
     feature_keys = {}
     first_go = True

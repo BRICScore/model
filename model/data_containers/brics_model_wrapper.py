@@ -1,9 +1,12 @@
-from flask import json
+import json
 import torch
 from torch import nn
 from pathlib import Path
 from typing import Optional
 from collections import Counter
+
+from model.model.brics_model import BRICSModel
+
 
 class BRICSModelWrapper:
     def __init__(self, model: nn.Module|None, learning_rate: float = 0.001) -> None:
@@ -58,9 +61,15 @@ class BRICSModelWrapper:
     def save_model(self, filepath: Path):
         if self.model is None:
             raise ValueError("Model is not defined.")
+        if not self.parameters:
+            raise ValueError("Model parameters are not defined.")
         # firstly, save the self.parameters to "parameters.jsonl" + input/output sizes
         payload = {
-            "parameters": self.parameters,
+            "parameters": {
+                "optimizer": self.parameters["optimizer"].__class__.__name__,
+                "criterion": self.parameters["criterion"].__class__.__name__,
+                "learning_rate": self.parameters["learning_rate"]
+            },
             "people_keys": self.people_keys,
             "feature_keys": self.feature_keys
         }
@@ -68,7 +77,7 @@ class BRICSModelWrapper:
             json.dump(payload, f)
         torch.save(self.model.state_dict(), filepath.with_suffix(".pth"))
 
-    def load_model(self, filepath: Path = Path("../model/model.pth")):
+    def load_model(self, filepath: Path = Path("../model/model")):
         # load input/output sizes and parameters from a separate file called "parameters.json"
         # (try & except for the model input and output size) 
         # (in case number of features or number of people differs in saved model)
@@ -78,14 +87,22 @@ class BRICSModelWrapper:
         try:
             with open(filepath.with_suffix(".jsonl"), "r") as f:
                 payload = json.load(f)
-            self.parameters = payload["parameters"]
+                # print(payload)
             self.people_keys = payload["people_keys"]
             self.feature_keys = payload["feature_keys"]
-            
+            self.parameters = {}
+            self.parameters["learning_rate"] = payload["parameters"]["learning_rate"]
+            self.model = BRICSModel(feature_count=len(self.feature_keys), n_classes=len(self.people_keys))
+                        
             if self.model is not None:
                 state_dict = torch.load(filepath.with_suffix(".pth"))
                 self.model.load_state_dict(state_dict)
                 self.model.eval()
+
+            if payload["parameters"]["optimizer"] == "Adam":
+                self.parameters["optimizer"] = torch.optim.Adam(self.model.parameters(), lr=self.parameters["learning_rate"])
+            if payload["parameters"]["criterion"] == "CrossEntropyLoss":
+                self.parameters["criterion"] = torch.nn.CrossEntropyLoss()
         except Exception as e:
             print(f"Error loading model or parameters: {e}")
             self.model = None

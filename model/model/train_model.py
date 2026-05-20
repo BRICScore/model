@@ -100,5 +100,4 @@ def train_model():
         # correct = (model_data.feature_data.labels == preds)
 
         # plt.figure(figsize=(6,5))
-
-#
+    return model_data
