@@ -39,7 +39,7 @@ def parse_record(record):
             feature_vector.append(val)
     return feature_vector
 
-def parse_features_from_data() -> ModelData:
+def parse_features_from_data(input_file: Path) -> ModelData:
     model_wrapper = BRICSModelWrapper(None)
     people_keys = {}
     feature_keys = {}
@@ -48,7 +48,7 @@ def parse_features_from_data() -> ModelData:
     person_index = 0
     data = []
     labels = []
-    with os.scandir(Path("./data/features")) as files:
+    with os.scandir(input_file) as files:
         for file in files:
             if first_go:
                 with open(file, "r") as f:
