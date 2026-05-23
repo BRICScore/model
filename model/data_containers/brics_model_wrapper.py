@@ -135,8 +135,9 @@ class BRICSModelWrapper:
         most_common_label = Counter(predictions.tolist()).most_common(1)[0][0]
         person = self.get_person(most_common_label)
 
+        # print(self.people_keys)
         print(f"Predicted label: {most_common_label}, corresponding to person: {person}")
-        
+
         # clean identifier directories after identification
         for file in IDENTIFIER_FEATURES_PATH.iterdir():
             if file.is_file():
@@ -179,6 +180,8 @@ class BRICSModelWrapper:
                 # print(payload)
             self.people_keys = payload["people_keys"]
             self.feature_keys = payload["feature_keys"]
+            self.people_keys = {int(k): v for k, v in payload["people_keys"].items()}
+            self.feature_keys = {int(k): v for k, v in payload["feature_keys"].items()}
             self.parameters = {}
             self.parameters["learning_rate"] = payload["parameters"]["learning_rate"]
             self.model = BRICSModel(feature_count=len(self.feature_keys), n_classes=len(self.people_keys))
