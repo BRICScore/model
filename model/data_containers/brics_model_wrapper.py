@@ -12,7 +12,7 @@ from brics_toolkit.data_processing import initial_data_processing, extract_featu
 from brics_toolkit.utils.config import *
 from model.data_containers.feature_data import FeatureData
 
-from model.config import *
+from config import *
 
 def split_data_into_segments(input_file : Path, BRV_data_clean : BRVDataClean):
     """

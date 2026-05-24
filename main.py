@@ -2,6 +2,7 @@
 
 import os
 import sys
+from typing import Optional
 from PySide6.QtWidgets import (
     QApplication,
     QWidget,
@@ -19,15 +20,16 @@ from config import *
 from pathlib import Path
 from brics_toolkit.brics_types import *
 from model.data_containers.brics_model_wrapper import BRICSModelWrapper
+from model.data_containers.model_data import ModelData
 from model.model.brics_model import BRICSModel
 from model.model.train_model import train_model
 
 class MainWindow(QWidget):
-    def __init__(self, model_data):
+    def __init__(self):
         super().__init__()
 
         # model_data setup
-        self.model_data = model_data
+        self.model_data: Optional[ModelData] = None
 
         self.setWindowTitle("Signal Identification UI")
         self.resize(1200, 700)
@@ -89,17 +91,6 @@ class MainWindow(QWidget):
 
         # Load row
         load_row = QHBoxLayout()
-        def get_selected_file():
-            text = str(self.file_dropdown.currentText())
-            self.result_label.setText(text)
-        def get_files():
-            self.file_dropdown.blockSignals(True)
-            self.file_dropdown.clear()
-            with os.scandir(UI_DATA_SOURCE_DIR_PATH) as files:
-                for file in files:
-                    self.file_dropdown.addItem(file.name)
-                    print(file.name)
-            self.file_dropdown.blockSignals(False)
 
         self.load_button = QPushButton("Load files")
         self.file_dropdown = QComboBox()
@@ -108,13 +99,43 @@ class MainWindow(QWidget):
         load_row.addWidget(self.file_dropdown)
 
         # Other buttons
+        self.train_model_button = QPushButton("Train Model")
         self.load_model_button = QPushButton("Load Model")
         self.download_button = QPushButton("Download Measurements")
         self.identification_button = QPushButton("Identification")
 
-        # Binding functions 
+        # Binding functions <----------------------------------------------------
+        def train_and_load_model():
+            self.model_data = train_model()
+            self.result_label.setText(f"Model trained and loaded")
+        def load_model_from_file():
+            pass
+        def get_files():
+            self.file_dropdown.blockSignals(True)
+            self.file_dropdown.clear()
+            with os.scandir(UI_DATA_SOURCE_DIR_PATH) as files:
+                for file in files:
+                    self.file_dropdown.addItem(file.name)
+                    print(file.name)
+            self.file_dropdown.blockSignals(False)
+        def download_measurements():
+            pass
+        def identify():
+            file = str(self.file_dropdown.currentText())
+            print(f"\n{file}")
+            person: Optional[str] = ""
+            if self.model_data:
+                person = self.model_data.model_wrapper.identify_person(Path("./raw/"+file))
+            else:
+                person = "No model loaded"
+            self.result_label.setText(f"predicted person is: {person}")
+        
+        self.train_model_button.clicked.connect(train_and_load_model)
+        self.load_model_button.clicked.connect(load_model_from_file)
         self.load_button.clicked.connect(get_files)
-        self.identification_button.clicked.connect(get_selected_file)
+        self.download_button.clicked.connect(download_measurements)
+        self.identification_button.clicked.connect(identify)
+        #-------------------------------------------------------------------------
 
         # Styling
         button_style = """
@@ -153,6 +174,7 @@ class MainWindow(QWidget):
 
         for btn in [
             self.load_button,
+            self.train_model_button,
             self.load_model_button,
             self.download_button,
             self.identification_button,
@@ -166,6 +188,7 @@ class MainWindow(QWidget):
         # Add control layout
         right_panel.addWidget(title)
         right_panel.addLayout(load_row)
+        right_panel.addWidget(self.train_model_button)
         right_panel.addWidget(self.load_model_button)
         right_panel.addWidget(self.download_button)
         right_panel.addWidget(self.identification_button)
@@ -177,12 +200,10 @@ class MainWindow(QWidget):
 
 
 def main():
-    MODEL_PATH = Path("./model/model")
-    TEST_FILE_PATH = Path("./raw/input_30_JD_sit_1.jsonl")
     app = QApplication(sys.argv)
 
-    model_data = train_model()
-    window = MainWindow(model_data)
+    # model_data = train_model
+    window = MainWindow()
     window.show()
 
     sys.exit(app.exec())
