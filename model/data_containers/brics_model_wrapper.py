@@ -12,12 +12,7 @@ from brics_toolkit.data_processing import initial_data_processing, extract_featu
 from brics_toolkit.utils.config import *
 from model.data_containers.feature_data import FeatureData
 
-IDENTIFIER_DIR_PATH = Path("./data/identifier/")
-IDENTIFIER_DIR_PATH.parent.mkdir(parents=True, exist_ok=True)
-IDENTIFIER_FEATURES_PATH = IDENTIFIER_DIR_PATH / "features"
-IDENTIFIER_FEATURES_PATH.mkdir(parents=True, exist_ok=True)
-IDENTIFIER_RESULTS_PATH = IDENTIFIER_DIR_PATH / "clean"
-IDENTIFIER_RESULTS_PATH.mkdir(parents=True, exist_ok=True)
+from model.config import *
 
 def split_data_into_segments(input_file : Path, BRV_data_clean : BRVDataClean):
     """

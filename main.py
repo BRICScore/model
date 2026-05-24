@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
-
+from config import *
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -87,14 +87,13 @@ class MainWindow(QWidget):
         def get_files():
             self.file_dropdown.blockSignals(True)
             self.file_dropdown.clear()
-            with os.scandir("./identification_files") as files:
+            with os.scandir(UI_DATA_SOURCE_DIR_PATH) as files:
                 for file in files:
                     self.file_dropdown.addItem(file.name)
                     print(file.name)
             self.file_dropdown.blockSignals(False)
 
         self.load_button = QPushButton("Load files")
-        self.load_button.clicked.connect(get_files)
         self.file_dropdown = QComboBox()
 
         load_row.addWidget(self.load_button)
@@ -104,6 +103,9 @@ class MainWindow(QWidget):
         self.load_model_button = QPushButton("Load Model")
         self.download_button = QPushButton("Download Measurements")
         self.identification_button = QPushButton("Identification")
+
+        # Function binding
+        self.load_button.clicked.connect(get_files)
         self.identification_button.clicked.connect(get_selected_file)
 
         # Styling
