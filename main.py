@@ -1,5 +1,5 @@
 # the final step in this - ui app call
-# pip install PySide6 <------------------------------------------------------------
+
 import os
 import sys
 from PySide6.QtWidgets import (
@@ -16,10 +16,18 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from config import *
+from pathlib import Path
+from brics_toolkit.brics_types import *
+from model.data_containers.brics_model_wrapper import BRICSModelWrapper
+from model.model.brics_model import BRICSModel
+from model.model.train_model import train_model
 
 class MainWindow(QWidget):
-    def __init__(self):
+    def __init__(self, model_data):
         super().__init__()
+
+        # model_data setup
+        self.model_data = model_data
 
         self.setWindowTitle("Signal Identification UI")
         self.resize(1200, 700)
@@ -104,7 +112,7 @@ class MainWindow(QWidget):
         self.download_button = QPushButton("Download Measurements")
         self.identification_button = QPushButton("Identification")
 
-        # Function binding
+        # Binding functions 
         self.load_button.clicked.connect(get_files)
         self.identification_button.clicked.connect(get_selected_file)
 
@@ -168,10 +176,16 @@ class MainWindow(QWidget):
         main_layout.addLayout(right_panel, 1)  # 1/3
 
 
-if __name__ == "__main__":
+def main():
+    MODEL_PATH = Path("./model/model")
+    TEST_FILE_PATH = Path("./raw/input_30_JD_sit_1.jsonl")
     app = QApplication(sys.argv)
 
-    window = MainWindow()
+    model_data = train_model()
+    window = MainWindow(model_data)
     window.show()
 
     sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()

@@ -4,3 +4,4 @@ dotenv
 numpy
 pathlib
 typing
+pyside6
