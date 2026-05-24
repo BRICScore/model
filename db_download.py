@@ -1,8 +1,6 @@
 import argparse
 import random
-import os
 import json
-import dotenv
 import numpy as np
 from pathlib import Path
 from typing import Optional
@@ -98,10 +96,6 @@ def load_features_from_database_zip(feature_data: FeatureData) -> tuple[np.ndarr
 
     return np.array(combined_features[1:,:]), metadata_rows  #skip the empty row
 
-import json
-import re
-from pathlib import Path
-
 def get_feature_data(feature_data: FeatureData, metadata_rows: list):
     feature_data_folder = Path(FEATURES_PATH)
     feature_data_folder.mkdir(parents=True, exist_ok=True)
@@ -140,9 +134,6 @@ def parser_setup():
     return parser
 
 def download_from_db():
-    # parser = parser_setup()
-    # args = parser.parse_args()
-
     dbh = DatabaseHandler()
     dbh.downloadMeasurement()
 
