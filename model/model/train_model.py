@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from model.data_containers import *
 from .parse_features import parse_features_from_data
 from .brics_model import BRICSModel
@@ -10,7 +12,7 @@ from torch.utils.data import TensorDataset, DataLoader
 
 def train_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model_data = parse_features_from_data()
+    model_data = parse_features_from_data(Path("./data/features"))
     # print(model_data.feature_data.data)
     # print(model_data.feature_data.data.size())
     # print(model_data.feature_data.labels)
@@ -33,6 +35,8 @@ def train_model():
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
     criterion = nn.CrossEntropyLoss()
 
+    if model_data.model_wrapper.parameters is None:
+        model_data.model_wrapper.parameters = {}
     model_data.model_wrapper.parameters["criterion"] = criterion
     model_data.model_wrapper.parameters["optimizer"] = optimizer
 
@@ -100,5 +104,4 @@ def train_model():
         # correct = (model_data.feature_data.labels == preds)
 
         # plt.figure(figsize=(6,5))
-
-#
+    return model_data
