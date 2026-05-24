@@ -13,13 +13,16 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QFrame,
     QSizePolicy,
+    QMessageBox
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from config import *
+from database_download import download_from_db
 from pathlib import Path
 from brics_toolkit.brics_types import *
 from model.data_containers.brics_model_wrapper import BRICSModelWrapper
+from model.data_containers.feature_data import FeatureData
 from model.data_containers.model_data import ModelData
 from model.model.brics_model import BRICSModel
 from model.model.train_model import train_model
@@ -108,8 +111,25 @@ class MainWindow(QWidget):
         def train_and_load_model():
             self.model_data = train_model()
             self.result_label.setText(f"Model trained and loaded")
+            reply = QMessageBox.question(
+                self,
+                "Confirm Action",
+                "Do you wat to save the model?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                if self.model_data:
+                    self.model_data.model_wrapper.save_model(filepath=Path("model/model/model"))
         def load_model_from_file():
-            pass
+            result: Optional[str]
+            if not self.model_data:
+                self.model_data = ModelData(feature_data=FeatureData(), model_wrapper=BRICSModelWrapper())
+            self.model_data.model_wrapper.load_model(Path("model/model/model"))
+            if self.model_data.model_wrapper.model:
+                result = "Model succesfully loaded"
+            else:
+                result = "Model failed to load"
+            self.result_label.setText(result)
         def get_files():
             self.file_dropdown.blockSignals(True)
             self.file_dropdown.clear()
@@ -119,7 +139,7 @@ class MainWindow(QWidget):
                     print(file.name)
             self.file_dropdown.blockSignals(False)
         def download_measurements():
-            pass
+            download_from_db()
         def identify():
             file = str(self.file_dropdown.currentText())
             print(f"\n{file}")

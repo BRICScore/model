@@ -77,7 +77,7 @@ def load_inference_features(features_dir: Path) -> torch.Tensor:
 
 
 class BRICSModelWrapper:
-    def __init__(self, model: nn.Module|None, learning_rate: float = 0.001) -> None:
+    def __init__(self, model: nn.Module|None = None, learning_rate: float = 0.001) -> None:
         self.model: Optional[nn.Module] = model
         self.parameters: Optional[dict] = {
             # TODO: those will have to be read from here and handled properly in the future
