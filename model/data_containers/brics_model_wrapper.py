@@ -134,12 +134,12 @@ class BRICSModelWrapper:
         print(f"Predicted label: {most_common_label}, corresponding to person: {person}")
 
         # clean identifier directories after identification
-        for file in IDENTIFIER_FEATURES_PATH.iterdir():
-            if file.is_file():
-                file.unlink()
-        for file in IDENTIFIER_RESULTS_PATH.iterdir():
-            if file.is_file():
-                file.unlink()
+        # for file in IDENTIFIER_FEATURES_PATH.iterdir():
+        #     if file.is_file():
+        #         file.unlink()
+        # for file in IDENTIFIER_RESULTS_PATH.iterdir():
+        #     if file.is_file():
+        #         file.unlink()
         
         return person
 
