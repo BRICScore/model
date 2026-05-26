@@ -1,8 +1,10 @@
 # the final step in this - ui app call
-
+import json
 import os
 import sys
 from typing import Optional
+import matplotlib.pyplot as plt
+import numpy as np
 from PySide6.QtWidgets import (
     QApplication,
     QWidget,
@@ -11,12 +13,11 @@ from PySide6.QtWidgets import (
     QComboBox,
     QVBoxLayout,
     QHBoxLayout,
-    QFrame,
     QSizePolicy,
     QMessageBox
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QPixmap
 from config import *
 from database_download import download_from_db
 from pathlib import Path
@@ -46,7 +47,7 @@ class MainWindow(QWidget):
         left_panel.setSpacing(15)
 
         # plot placeholder
-        self.plot_area = QFrame()
+        self.plot_area = QLabel()
         self.plot_area.setStyleSheet("""
             QFrame {
                 background-color: #1e1e1e;
@@ -61,10 +62,10 @@ class MainWindow(QWidget):
 
         plot_layout = QVBoxLayout(self.plot_area)
 
-        plot_label = QLabel("Signal Plot Area")
-        plot_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        plot_label.setStyleSheet("color: #bbbbbb; font-size: 22px;")
-        plot_layout.addWidget(plot_label)
+        self.plot_label = QLabel("Signal Plot Area")
+        self.plot_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.plot_label.setStyleSheet("color: #bbbbbb; font-size: 22px;")
+        plot_layout.addWidget(self.plot_label)
 
         # Result label
         self.result_label = QLabel("Result will appear here")
@@ -144,8 +145,34 @@ class MainWindow(QWidget):
             file = str(self.file_dropdown.currentText())
             print(f"\n{file}")
             person: Optional[str] = ""
+            data = []
             if self.model_data:
                 person = self.model_data.model_wrapper.identify_person(Path("./raw/"+file))
+                to_plot = Path(f"./data/identifier/clean/{file.split(".")[0]}_0.jsonl")
+                with open(to_plot, "r") as f:
+                    record = f.readline()
+                    while record:
+                        feature_vector = parse_record(record)
+                        data.append(feature_vector)
+                        record = f.readline()
+
+                file_data = np.array(data)
+                for i in range(5):
+                    plt.plot(file_data[:,0], file_data[:,i+1])
+                plt.xlim((0,20000))
+                plt.savefig("./temp.jpg")
+                plt.close()
+                # set the jpg into label
+                pixmap = QPixmap("temp.jpg")   # path to your image
+                self.plot_label.clear()
+                self.plot_label.setPixmap(pixmap)
+                self.plot_label.repaint()
+                for file in IDENTIFIER_FEATURES_PATH.iterdir():
+                    if file.is_file():
+                        file.unlink()
+                for file in IDENTIFIER_RESULTS_PATH.iterdir():
+                    if file.is_file():
+                        file.unlink()
             else:
                 person = "No model loaded"
             self.result_label.setText(f"predicted person is: {person}")
@@ -218,6 +245,16 @@ class MainWindow(QWidget):
         main_layout.addLayout(left_panel, 2)   # 2/3
         main_layout.addLayout(right_panel, 1)  # 1/3
 
+def parse_record(record):
+    features = json.loads(record)
+    feature_vector = []
+    for key, val in features.items():
+        if type(val) == list:
+            for number in val:
+                feature_vector.append(number)
+        else:
+            feature_vector.append(val)
+    return feature_vector
 
 def main():
     app = QApplication(sys.argv)
