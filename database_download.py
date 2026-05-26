@@ -1,20 +1,18 @@
 import argparse
 import random
-import os
 import json
-import dotenv
 import numpy as np
 from pathlib import Path
 from typing import Optional
 
 from classifiers.specific_features_classifier import FeatureData
-from utils.measurement_dataset_control import MeasurementDatasetHook
-from utils.file_processing.measurement_data_builder import MeasurementDataBuilder
-from data_containers import MeasurementData, MeasurementMetadata
+from brics_toolkit.utils.measurement_dataset_control import MeasurementDatasetHook
+from brics_toolkit.utils.file_processing.measurement_data_builder import MeasurementDataBuilder
+from brics_toolkit.data_containers import MeasurementData, MeasurementMetadata
 import sys
 sys.path.append("utils")
 from config import *
-from database_access.database_handler import *
+from brics_toolkit.database_access.database_handler import *
 
 
 NO_OF_FEATURES_AFTER_ALG = 2
@@ -98,10 +96,6 @@ def load_features_from_database_zip(feature_data: FeatureData) -> tuple[np.ndarr
 
     return np.array(combined_features[1:,:]), metadata_rows  #skip the empty row
 
-import json
-import re
-from pathlib import Path
-
 def get_feature_data(feature_data: FeatureData, metadata_rows: list):
     feature_data_folder = Path(FEATURES_PATH)
     feature_data_folder.mkdir(parents=True, exist_ok=True)
@@ -139,11 +133,7 @@ def parser_setup():
                     help='A boolean switch for local files instead of files from database zip')
     return parser
 
-
-def main():
-    parser = parser_setup()
-    args = parser.parse_args()
-
+def download_from_db():
     dbh = DatabaseHandler()
     dbh.downloadMeasurement()
 
@@ -153,7 +143,8 @@ def main():
 
     get_feature_data(feature_data=feature_data, metadata_rows=metadata_rows)
 
-
+def main():
+    download_from_db()
 
 if __name__ == "__main__":
     main()

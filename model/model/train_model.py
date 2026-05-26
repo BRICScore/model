@@ -1,14 +1,36 @@
 from pathlib import Path
 
+from sklearn.metrics import confusion_matrix
+
 from model.data_containers import *
 from .parse_features import parse_features_from_data
 from .brics_model import BRICSModel
 from .hyperparameters import *
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch import nn, Tensor
 from torch.utils.data import TensorDataset, DataLoader
+
+def display_confusion_matrix(classes, preds, accuracy, show=True):
+    from sklearn.metrics import ConfusionMatrixDisplay
+    import matplotlib.pyplot as plt
+    cm = confusion_matrix(classes, preds)
+    # print(cm)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm)
+    disp.plot(cmap="Blues")
+
+    plt.title(f"Confusion Matrix, accuracy: {accuracy*100:.2f}%")
+    if show:
+        plt.show()
+    else:
+        plt.savefig("confusion_matrix.jpg")
+        plt.close()
+
+    correct = (classes == preds)
+
+    plt.figure(figsize=(6,5))
 
 def train_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -93,15 +115,6 @@ def train_model():
         preds = torch.argmax(logits, dim=1)
         acc = (preds == labels).float().mean()
         print(f"Model accuracy is: {acc.item()}")
-        # cm = confusion_matrix(model_data.feature_data.labels.numpy(), preds.numpy())
-        # print(cm)
-        # disp = ConfusionMatrixDisplay(confusion_matrix=cm)
-        # disp.plot(cmap="Blues")
-
-        # plt.title("Confusion Matrix")
-        # plt.show()
-
-        # correct = (model_data.feature_data.labels == preds)
-
-        # plt.figure(figsize=(6,5))
+        # if acc.item() > 0.85:
+        display_confusion_matrix(labels, preds, accuracy=acc, show=False)
     return model_data
