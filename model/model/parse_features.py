@@ -6,10 +6,13 @@ from torch import Tensor, tensor
 import torch
 import numpy as np
 from sklearn.preprocessing import StandardScaler
+import joblib
 
 def scale_data(data: np.ndarray) -> np.ndarray:
     scaler = StandardScaler()
-    return scaler.fit_transform(data)
+    scaled = scaler.fit_transform(data)
+    joblib.dump(scaler, './model/scaler.pkl')
+    return scaled
 
 def create_indices_for_features(record: str) -> dict:
     feature_keys = {}
@@ -72,6 +75,8 @@ def parse_features_from_data(input_file: Path) -> ModelData:
     labele = tensor(np_labels, dtype=torch.long)
     print(labele.shape)
     feature_data = FeatureData(data=tensor(np_data, dtype=torch.float32), labels=labele)
+    # print(feature_data.data)
+    # print(feature_data.labels)
     model_data = ModelData(feature_data=feature_data, model_wrapper=model_wrapper)
     return model_data
 

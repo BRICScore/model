@@ -211,3 +211,4 @@ test.py
 test_model_wraper.py
 *.pth
 temp
+model/scaler.pkl

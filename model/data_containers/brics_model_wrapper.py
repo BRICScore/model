@@ -1,4 +1,6 @@
 import json
+import joblib
+from sklearn.preprocessing import StandardScaler
 import torch
 from torch import nn
 from pathlib import Path
@@ -73,7 +75,10 @@ def load_inference_features(features_dir: Path) -> torch.Tensor:
                         row.append(value)
                 rows.append(row)
 
-    return torch.tensor(rows, dtype=torch.float32)
+    scaler = joblib.load('./model/scaler.pkl')
+    features = np.asarray(rows, dtype=np.float32)
+    features = scaler.transform(features)
+    return torch.tensor(features, dtype=torch.float32)
 
 
 class BRICSModelWrapper:
