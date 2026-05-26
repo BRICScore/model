@@ -112,6 +112,11 @@ class MainWindow(QWidget):
         def train_and_load_model():
             self.model_data = train_model()
             self.result_label.setText(f"Model trained and loaded")
+            pixmap = QPixmap("confusion_matrix.jpg")   # path to your image
+            self.plot_label.clear()
+            self.plot_label.setPixmap(pixmap)
+            self.plot_label.repaint()
+
             reply = QMessageBox.question(
                 self,
                 "Confirm Action",

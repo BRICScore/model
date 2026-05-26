@@ -7,12 +7,13 @@ from .parse_features import parse_features_from_data
 from .brics_model import BRICSModel
 from .hyperparameters import *
 
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch import nn, Tensor
 from torch.utils.data import TensorDataset, DataLoader
 
-def display_confusion_matrix(classes, preds):
+def display_confusion_matrix(classes, preds, accuracy, show=True):
     from sklearn.metrics import ConfusionMatrixDisplay
     import matplotlib.pyplot as plt
     cm = confusion_matrix(classes, preds)
@@ -20,8 +21,12 @@ def display_confusion_matrix(classes, preds):
     disp = ConfusionMatrixDisplay(confusion_matrix=cm)
     disp.plot(cmap="Blues")
 
-    plt.title("Confusion Matrix")
-    plt.show()
+    plt.title(f"Confusion Matrix, accuracy: {accuracy*100:.2f}%")
+    if show:
+        plt.show()
+    else:
+        plt.savefig("confusion_matrix.jpg")
+        plt.close()
 
     correct = (classes == preds)
 
@@ -110,6 +115,6 @@ def train_model():
         preds = torch.argmax(logits, dim=1)
         acc = (preds == labels).float().mean()
         print(f"Model accuracy is: {acc.item()}")
-        if acc.item() > 0.85:
-            display_confusion_matrix(labels, preds);
+        # if acc.item() > 0.85:
+        display_confusion_matrix(labels, preds, accuracy=acc, show=False)
     return model_data
