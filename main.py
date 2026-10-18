@@ -27,6 +27,7 @@ from model.data_containers.feature_data import FeatureData
 from model.data_containers.model_data import ModelData
 from model.model.brics_model import BRICSModel
 from model.model.train_model import train_model
+from model.model.train_model_numeric import train_model as train_model_numeric
 
 class MainWindow(QWidget):
     def __init__(self):
@@ -102,15 +103,32 @@ class MainWindow(QWidget):
         load_row.addWidget(self.load_button)
         load_row.addWidget(self.file_dropdown)
 
-        # Other buttons
+        # Train row
+        train_row = QHBoxLayout()
         self.train_model_button = QPushButton("Train Model")
+
+        self.train_dropdown = QComboBox()
+        self.train_dropdown.clear()
+        self.train_dropdown.addItem("Identification")
+        self.train_dropdown.addItem("Gender")
+
+        train_row.addWidget(self.train_model_button)
+        train_row.addWidget(self.train_dropdown)
+
+        # Other buttons
         self.load_model_button = QPushButton("Load Model")
         self.download_button = QPushButton("Download Measurements")
         self.identification_button = QPushButton("Identification")
 
         # Binding functions <----------------------------------------------------
         def train_and_load_model():
-            self.model_data = train_model()
+            training_type = str(self.train_dropdown.currentText())
+            print(training_type)
+            if training_type == "Identification" or training_type == "Gender":
+                self.model_data = train_model(training_type=training_type)
+            elif training_type == "Height" or training_type == "Weight":
+                self.model_data = train_model_numeric(training_type=training_type)
+
             self.result_label.setText(f"Model trained and loaded")
             pixmap = QPixmap("confusion_matrix.jpg")   # path to your image
             self.plot_label.clear()
@@ -151,6 +169,7 @@ class MainWindow(QWidget):
             print(f"\n{file}")
             person: Optional[str] = ""
             data = []
+            training_type = str(self.train_dropdown.currentText())
             if self.model_data:
                 person = self.model_data.model_wrapper.identify_person(Path("./raw/"+file))
                 to_plot = Path(f"./data/identifier/clean/{file.split(".")[0]}_0.jsonl")
@@ -180,13 +199,37 @@ class MainWindow(QWidget):
                         file.unlink()
             else:
                 person = "No model loaded"
-            self.result_label.setText(f"predicted person is: {person}")
+                training_type = None
+            set_result_label(person=person, train_type=training_type)
+
+        def set_result_label(person, train_type):
+            if not train_type:
+                self.result_label.setText(f"{person}")
+            if train_type == "Identification":
+                self.result_label.setText(f"predicted person is: {person}")
+            else:
+                gender = {0: "male", 1: "female"}
+                gender_map = {
+                    "s197629@student.pg.edu.pl": 0,
+                    "s197639@student.pg.edu.pl": 0,
+                    "s197565@student.pg.edu.pl": 0,
+                    "s197672@student.pg.edu.pl": 0,
+                    "s198203@student.pg.edu.pl": 0,
+                    "s198291@student.pg.edu.pl": 0,
+                    "s198337@student.pg.edu.pl": 0,
+
+                    "s198111@student.pg.edu.pl": 1,
+                    "s194319@student.pg.edu.pl": 1
+                }
+                self.result_label.setText(f"predicted person is: {gender[gender_map[person]]}") # type: ignore
+
         
         self.train_model_button.clicked.connect(train_and_load_model)
         self.load_model_button.clicked.connect(load_model_from_file)
         self.load_button.clicked.connect(get_files)
         self.download_button.clicked.connect(download_measurements)
         self.identification_button.clicked.connect(identify)
+        #self.identification_button.clicked.connect(identify_gender)
         #-------------------------------------------------------------------------
 
         # Styling
@@ -236,11 +279,13 @@ class MainWindow(QWidget):
 
         self.file_dropdown.setStyleSheet(combo_style)
         self.file_dropdown.setMinimumHeight(50)
+        self.train_dropdown.setStyleSheet(combo_style)
+        self.train_dropdown.setMinimumHeight(50)
 
         # Add control layout
         right_panel.addWidget(title)
         right_panel.addLayout(load_row)
-        right_panel.addWidget(self.train_model_button)
+        right_panel.addLayout(train_row)
         right_panel.addWidget(self.load_model_button)
         right_panel.addWidget(self.download_button)
         right_panel.addWidget(self.identification_button)

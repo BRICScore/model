@@ -136,7 +136,7 @@ class BRICSModelWrapper:
         person = self.get_person(most_common_label)
 
         # print(self.people_keys)
-        print(f"Predicted label: {most_common_label}, corresponding to person: {person}")
+        print(f"Predicted label: {most_common_label}, corresponding to label: {person}")
 
         # clean identifier directories after identification
         # for file in IDENTIFIER_FEATURES_PATH.iterdir():
