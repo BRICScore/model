@@ -43,7 +43,15 @@ def parse_record(record):
     return feature_vector
 
 def extract_chosen_metadata(metadata, training_type, person_index):
-    print(metadata["gender"])
+    if training_type == "Height":
+        print(type(metadata["height"]))
+        print(metadata["height"])
+        return metadata["height"]
+    elif training_type == "Weight":
+        print(type(metadata["weight"]))
+        print(metadata["weight"])
+        return metadata["weight"]
+
     return (1 if metadata["gender"] == "female" else 0) if training_type == "Gender" else person_index
 
 def parse_features_from_data(input_file: Path, training_type: str) -> ModelData:

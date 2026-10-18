@@ -111,6 +111,8 @@ class MainWindow(QWidget):
         self.train_dropdown.clear()
         self.train_dropdown.addItem("Identification")
         self.train_dropdown.addItem("Gender")
+        self.train_dropdown.addItem("Height")
+        self.train_dropdown.addItem("Weight")
 
         train_row.addWidget(self.train_model_button)
         train_row.addWidget(self.train_dropdown)
