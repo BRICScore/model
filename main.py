@@ -166,65 +166,61 @@ class MainWindow(QWidget):
             self.file_dropdown.blockSignals(False)
         def download_measurements():
             download_from_db()
+        def plot_identified_signal(file, data):
+            to_plot = Path(f"./data/identifier/clean/{file.split(".")[0]}_0.jsonl")
+            with open(to_plot, "r") as f:
+                record = f.readline()
+                while record:
+                    feature_vector = parse_record(record)
+                    data.append(feature_vector)
+                    record = f.readline()
+
+            file_data = np.array(data)
+            for i in range(5):
+                plt.plot(file_data[:,0], file_data[:,i+1])
+            plt.xlim((0,20000))
+            plt.savefig("./temp.jpg")
+            plt.close()
+            # set the jpg into label
+            pixmap = QPixmap("temp.jpg")   # path to your image
+            self.plot_label.clear()
+            self.plot_label.setPixmap(pixmap)
+            self.plot_label.repaint()
+            for file in IDENTIFIER_FEATURES_PATH.iterdir():
+                if file.is_file():
+                    file.unlink()
+            for file in IDENTIFIER_RESULTS_PATH.iterdir():
+                if file.is_file():
+                    file.unlink()
         def identify():
             file = str(self.file_dropdown.currentText())
             print(f"\n{file}")
             person: Optional[str] = ""
+            most_common_label = None
             data = []
+            result = 0
             training_type = str(self.train_dropdown.currentText())
+            if training_type == "Height" or training_type == "Weight":
+                if self.model_data:
+                    predicted_value = self.model_data.model_wrapper.identify_person(Path("./raw/"+file))
             if self.model_data:
-                person = self.model_data.model_wrapper.identify_person(Path("./raw/"+file))
-                to_plot = Path(f"./data/identifier/clean/{file.split(".")[0]}_0.jsonl")
-                with open(to_plot, "r") as f:
-                    record = f.readline()
-                    while record:
-                        feature_vector = parse_record(record)
-                        data.append(feature_vector)
-                        record = f.readline()
-
-                file_data = np.array(data)
-                for i in range(5):
-                    plt.plot(file_data[:,0], file_data[:,i+1])
-                plt.xlim((0,20000))
-                plt.savefig("./temp.jpg")
-                plt.close()
-                # set the jpg into label
-                pixmap = QPixmap("temp.jpg")   # path to your image
-                self.plot_label.clear()
-                self.plot_label.setPixmap(pixmap)
-                self.plot_label.repaint()
-                for file in IDENTIFIER_FEATURES_PATH.iterdir():
-                    if file.is_file():
-                        file.unlink()
-                for file in IDENTIFIER_RESULTS_PATH.iterdir():
-                    if file.is_file():
-                        file.unlink()
+                person, most_common_label = self.model_data.model_wrapper.identify_person(Path("./raw/"+file))
+                plot_identified_signal(file=file, data=data)
             else:
                 person = "No model loaded"
                 training_type = None
-            set_result_label(person=person, train_type=training_type)
+            set_result_label(person=person, most_common_label=most_common_label, train_type=training_type, result=result)
 
-        def set_result_label(person, train_type):
+        def set_result_label(person, most_common_label, train_type, result):
             if not train_type:
                 self.result_label.setText(f"{person}")
             if train_type == "Identification":
                 self.result_label.setText(f"predicted person is: {person}")
-            else:
+            elif train_type == "Gender":
                 gender = {0: "male", 1: "female"}
-                gender_map = {
-                    "s197629@student.pg.edu.pl": 0,
-                    "s197639@student.pg.edu.pl": 0,
-                    "s197565@student.pg.edu.pl": 0,
-                    "s197672@student.pg.edu.pl": 0,
-                    "s198203@student.pg.edu.pl": 0,
-                    "s198291@student.pg.edu.pl": 0,
-                    "s198337@student.pg.edu.pl": 0,
-
-                    "s198111@student.pg.edu.pl": 1,
-                    "s194319@student.pg.edu.pl": 1
-                }
-                self.result_label.setText(f"predicted person is: {gender[gender_map[person]]}") # type: ignore
-
+                self.result_label.setText(f"predicted person is: {gender[most_common_label]}") # type: ignore
+            elif train_type == "Height":
+                self.result_label.setText(f"predicted height is: {result}")
         
         self.train_model_button.clicked.connect(train_and_load_model)
         self.load_model_button.clicked.connect(load_model_from_file)

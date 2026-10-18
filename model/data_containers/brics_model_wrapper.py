@@ -98,8 +98,7 @@ class BRICSModelWrapper:
             return self.people_keys.get(label, None)
         else:
             return None
-    
-    def identify_person(self, input_file: Path):
+    def feed_forward(self, input_file: Path):
         if self.model is None:
             raise ValueError("Model is not defined.")
         
@@ -126,6 +125,12 @@ class BRICSModelWrapper:
         )
 
         features_tensor = load_inference_features(IDENTIFIER_FEATURES_PATH)
+        return features_tensor
+
+    def identify_person(self, input_file: Path):
+        features_tensor = self.feed_forward(input_file=input_file)
+        if self.model is None:
+            raise ValueError("Model is not defined.")         
 
         self.model.eval()
         with torch.no_grad():
@@ -137,16 +142,7 @@ class BRICSModelWrapper:
 
         # print(self.people_keys)
         print(f"Predicted label: {most_common_label}, corresponding to label: {person}")
-
-        # clean identifier directories after identification
-        # for file in IDENTIFIER_FEATURES_PATH.iterdir():
-        #     if file.is_file():
-        #         file.unlink()
-        # for file in IDENTIFIER_RESULTS_PATH.iterdir():
-        #     if file.is_file():
-        #         file.unlink()
-        
-        return person
+        return person, most_common_label
 
     def save_model(self, filepath: Path):
         if self.model is None:
