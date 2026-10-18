@@ -194,6 +194,9 @@ class MainWindow(QWidget):
                     file.unlink()
         def identify():
             file = str(self.file_dropdown.currentText())
+            if not file:
+                print("No fileselected")
+                return
             print(f"\n{file}")
             person: Optional[str] = ""
             most_common_label = None
@@ -202,7 +205,9 @@ class MainWindow(QWidget):
             training_type = str(self.train_dropdown.currentText())
             if training_type == "Height" or training_type == "Weight":
                 if self.model_data:
-                    predicted_value = self.model_data.model_wrapper.identify_person(Path("./raw/"+file))
+                    predicted_value = self.model_data.model_wrapper.predict_numeric_value(Path("./raw/"+file))
+                    set_result_label(person=person, most_common_label=most_common_label, train_type=training_type, result=predicted_value)
+                    return
             if self.model_data:
                 person, most_common_label = self.model_data.model_wrapper.identify_person(Path("./raw/"+file))
                 plot_identified_signal(file=file, data=data)
@@ -221,6 +226,8 @@ class MainWindow(QWidget):
                 self.result_label.setText(f"predicted person is: {gender[most_common_label]}") # type: ignore
             elif train_type == "Height":
                 self.result_label.setText(f"predicted height is: {result}")
+            elif train_type == "Weight":
+                self.result_label.setText(f"predicted weight is: {result}")
         
         self.train_model_button.clicked.connect(train_and_load_model)
         self.load_model_button.clicked.connect(load_model_from_file)

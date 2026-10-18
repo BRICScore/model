@@ -144,6 +144,21 @@ class BRICSModelWrapper:
         print(f"Predicted label: {most_common_label}, corresponding to label: {person}")
         return person, most_common_label
 
+    def predict_numeric_value(self, input_file: Path):
+        features_tensor = self.feed_forward(input_file=input_file)
+        if self.model is None:
+            raise ValueError("Model is not defined.")         
+
+        self.model.eval()
+        with torch.no_grad():
+            predictions = self.model(features_tensor)
+
+        numeric_value = predictions.float().mean()
+
+        # print(self.people_keys)
+        # print(f"Predicted values: {predictions}")
+        return numeric_value
+
     def save_model(self, filepath: Path):
         if self.model is None:
             raise ValueError("Model is not defined.")
