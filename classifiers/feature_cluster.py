@@ -67,8 +67,8 @@ def hdbscan():
         )
 
     axes[0].set_title("Original Labels")
-    axes[0].set_xlabel(f"Feature {best_pair[0]}")
-    axes[0].set_ylabel(f"Feature {best_pair[1]}")
+    axes[0].set_xlabel(f"Feature {feature_data.feature_keys[chosen_pair[0]]}")
+    axes[0].set_ylabel(f"Feature {feature_data.feature_keys[chosen_pair[1]]}")
 
     # Sort legend alphabetically
     handles, legend_labels = axes[0].get_legend_handles_labels()
@@ -99,8 +99,8 @@ def hdbscan():
         )
 
     axes[1].set_title("HDBSCAN Clusters")
-    axes[1].set_xlabel(f"Feature {best_pair[0]}")
-    axes[1].set_ylabel(f"Feature {best_pair[1]}")
+    axes[1].set_xlabel(f"Feature {feature_data.feature_keys[chosen_pair[0]]}")
+    axes[1].set_ylabel(f"Feature {feature_data.feature_keys[chosen_pair[1]]}")
     axes[1].legend(title="Cluster")
     axes[1].grid(alpha=0.2)
 
