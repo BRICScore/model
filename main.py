@@ -140,7 +140,7 @@ class MainWindow(QWidget):
             reply = QMessageBox.question(
                 self,
                 "Confirm Action",
-                "Do you wat to save the model?",
+                "Do you want to save the model?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
             )
             if reply == QMessageBox.StandardButton.Yes:
