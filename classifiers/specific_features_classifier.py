@@ -18,7 +18,7 @@ import os
 FEATURES_PATH = './data/features'
 CLEAN_PATH = '/data/clean'
 RAW_PATH = '/data/raw'
-EPOCHS = 10_000
+EPOCHS = 5_000
 
 class FeatureData():
     def __init__(self):
@@ -292,15 +292,7 @@ def NN_classification(feature_data: FeatureData, best_pair: tuple[int, int]) -> 
         plt.title("Classes + Misclassified Points for chosen best 2 features")
         plt.show()
 
-
-def specific_features_classifier():
-    feature_data = FeatureData()
-
-    feature_data.features = feature_loading(feature_data)
-    cov_matrix = np.cov(feature_data.features_scaled, rowvar=False)
-    best_pair, best_value = establish_best_features(feature_data=feature_data, cov=cov_matrix)
-    # SVM_classification(feature_data=feature_data, best_pair=best_pair)
-
+def choose_class_features(feature_data, best_pair):
     chosen_pair: tuple[int, int]
     if feature_data.feature_count is None:
         feature_data.feature_count = 0
@@ -312,6 +304,17 @@ def specific_features_classifier():
         chosen_pair = (int(choice[0]),int(choice[1]))
     except:
         chosen_pair = best_pair
+    return chosen_pair
+
+def specific_features_classifier():
+    feature_data = FeatureData()
+
+    feature_data.features = feature_loading(feature_data)
+    cov_matrix = np.cov(feature_data.features_scaled, rowvar=False)
+    best_pair, best_value = establish_best_features(feature_data=feature_data, cov=cov_matrix)
+    # SVM_classification(feature_data=feature_data, best_pair=best_pair)
+
+    chosen_pair = choose_class_features(feature_data=feature_data, best_pair=best_pair)
 
     NN_classification(feature_data=feature_data, best_pair=chosen_pair)
 
