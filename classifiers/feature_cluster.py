@@ -53,34 +53,58 @@ def hdbscan():
     print(f"Noise points: {n_noise}")
     print(f"Total points: {len(labels)}")
 
-    # Plot clusters
-    plt.figure(figsize=(10, 7))
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
 
+    # --- Left: Original labels ---
+    for person, indices in feature_data.person_indices.items():
+        indices = np.asarray(indices, dtype=int)
+
+        axes[0].scatter(
+            X[indices, 0],
+            X[indices, 1],
+            label=str(person),
+            alpha=0.7
+        )
+
+    axes[0].set_title("Original Labels")
+    axes[0].set_xlabel(f"Feature {best_pair[0]}")
+    axes[0].set_ylabel(f"Feature {best_pair[1]}")
+
+    # Sort legend alphabetically
+    handles, legend_labels = axes[0].get_legend_handles_labels()
+    sorted_items = sorted(zip(legend_labels, handles), key=lambda x: x[0])
+
+    legend_labels_sorted, handles_sorted = zip(*sorted_items)
+
+    axes[0].legend(
+        handles_sorted,
+        legend_labels_sorted,
+        title="Person",
+        bbox_to_anchor=(1.02, 1),
+        loc="upper left"
+    )
+
+    axes[0].grid(alpha=0.2)
+
+    # --- Right: HDBSCAN clusters ---
     for cluster in np.unique(labels):
         mask = labels == cluster
 
-        if cluster == -1:
-            plt.scatter(
-                X[mask, 0],
-                X[mask, 1],
-                c="lightgray",
-                marker="x",
-                label="Noise",
-                alpha=0.7
-            )
-        else:
-            plt.scatter(
-                X[mask, 0],
-                X[mask, 1],
-                label=f"Cluster {cluster}",
-                alpha=0.7
-            )
+        axes[1].scatter(
+            X[mask, 0],
+            X[mask, 1],
+            label="Noise" if cluster == -1 else f"Cluster {cluster}",
+            marker="x" if cluster == -1 else "o",
+            alpha=0.7
+        )
 
-    plt.xlabel(feature_data.feature_keys[chosen_pair[0]])
-    plt.ylabel(feature_data.feature_keys[chosen_pair[1]])
-    plt.title("HDBSCAN Clustering")
-    plt.legend()
-    plt.grid(alpha=0.2)
+    axes[1].set_title("HDBSCAN Clusters")
+    axes[1].set_xlabel(f"Feature {best_pair[0]}")
+    axes[1].set_ylabel(f"Feature {best_pair[1]}")
+    axes[1].legend(title="Cluster")
+    axes[1].grid(alpha=0.2)
+
+    plt.tight_layout()
     plt.show()
 
 def main():

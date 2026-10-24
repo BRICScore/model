@@ -38,7 +38,7 @@ def parse_features_line(line, feature_data, filename, metadata, chosen_label):
     feature_vector = []
     temp = filename.split('_') # TODO
 
-    person = metadata[chosen_label]
+    person = str(metadata[chosen_label])
 
     for key in line:
         if isinstance(line[key], list):
