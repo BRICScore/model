@@ -32,12 +32,14 @@ class FeatureData():
         self.feature_keys = {}
         self.person_colors = {} # dictionary for colors of data points for different person labels
         self.person_indices = {} # dictionary holding arrays of indices in feature data for people
-        self.person_initials = [] # array holding all initials for labels in legend
+        self.person_initials = [] # array holding all ids for labels in legend
 
-def parse_features_line(line, feature_data, filename):
+def parse_features_line(line, feature_data, filename, metadata, chosen_label):
     feature_vector = []
     temp = filename.split('_') # TODO
-    person = temp[2][:2]
+
+    person = metadata[chosen_label]
+
     for key in line:
         if isinstance(line[key], list):
             for val in line[key]:
@@ -63,7 +65,21 @@ def parse_features_line(line, feature_data, filename):
 
 def feature_loading(feature_data):
     features = []
+    chosen_label = "person_id"
     last_filename: str = 'extracted_features.jsonl'
+    with os.scandir(FEATURES_PATH) as es:
+        metadata: dict
+        for e in es:
+            print(e.name)
+            if e.is_file() and e.name.endswith('.jsonl'):
+                last_filename = e.name
+                with open(e.path, encoding='utf-8') as file:
+                    record = file.readline()
+                    metadata = json.loads(record)
+                    for key in metadata:
+                        print(f"{key}")
+                    chosen_label = input("Choose a label to classify by: ")
+                    break
     with os.scandir(FEATURES_PATH) as es:
         for e in es:
             print(e.name)
@@ -71,13 +87,14 @@ def feature_loading(feature_data):
                 last_filename = e.name
                 with open(e.path, encoding='utf-8') as file:
                     record = file.readline()
+                    metadata = json.loads(record) # first row is metadata
+                    record = file.readline()
                     while record:
                         json_record = json.loads(record)
-                        feature_vector = parse_features_line(json_record, feature_data, e.name)
+                        feature_vector = parse_features_line(json_record, feature_data, e.name, metadata, chosen_label)
                         features.append(feature_vector)
                         record = file.readline()
     feature_data.feature_count = len(features[0])
-    feature_data.person_colors = {"JD": "orange", "MJ": "green", "MK": "blue", "DS": "red"} ###########TODO############
     create_indices_for_features(feature_data, last_filename)
     npfeatures = np.array(features)
     feature_data.features_scaled = StandardScaler().fit_transform(npfeatures)
@@ -86,6 +103,7 @@ def feature_loading(feature_data):
 def create_indices_for_features(feature_data, filename):
     record = None
     with open(FEATURES_PATH+'/'+filename, "r") as file:
+        record = file.readline() #skip metadata
         record = file.readline()
     i = 0
     json_line = json.loads(record)
@@ -186,7 +204,9 @@ def NN_classification(feature_data: FeatureData, best_pair: tuple[int, int]) -> 
     cut_features = torch.tensor(feature_data.features[:,np.array([best_pair[0], best_pair[1]])])
     temp_labels = np.zeros(cut_features.shape[0])
     person_label_map = create_person_map(identifier_list=feature_data.person_initials)
+    people_count = 0
     for person in feature_data.person_initials:
+        people_count += 1
         for index in feature_data.person_indices[person]:
             temp_labels[index] = person_label_map[person]
     print(temp_labels)
@@ -196,19 +216,19 @@ def NN_classification(feature_data: FeatureData, best_pair: tuple[int, int]) -> 
     y = torch.tensor(temp_labels, dtype=torch.long)
 
     class FullyConnectedNNclassifier(nn.Module):
-        def __init__(self):
+        def __init__(self, no_of_classes):
             super().__init__()
             self.net = nn.Sequential(
                 nn.Linear(2, 6),
                 nn.ReLU(),
                 nn.Linear(6,10),
                 nn.ReLU(),
-                nn.Linear(10, 4)
+                nn.Linear(10, no_of_classes)
             )
 
         def forward(self, x):
             return self.net(x) 
-    model = FullyConnectedNNclassifier()
+    model = FullyConnectedNNclassifier(no_of_classes=people_count)
 
     # ---- loss + optimizer ----
     criterion = nn.CrossEntropyLoss()
@@ -242,17 +262,15 @@ def NN_classification(feature_data: FeatureData, best_pair: tuple[int, int]) -> 
         plt.show()
 
         correct = (y == preds)
-        colors = ["red", "blue", "green", "purple"]
-        class_names = ["DS", "JD", "MJ", "MK"]
         plt.figure(figsize=(6,5))
 
         # plot all classes
-        for i in range(4):
+        for i, person in enumerate(feature_data.person_initials):
             plt.scatter(
                 X[y == i, 0],
                 X[y == i, 1],
-                color=colors[i],
-                label=class_names[i],
+                color=feature_data.person_colors[person],
+                label=person,
                 edgecolor="k",
                 alpha=0.7
             )
