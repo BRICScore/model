@@ -42,7 +42,19 @@ def parse_record(record):
             feature_vector.append(val)
     return feature_vector
 
-def parse_features_from_data(input_file: Path) -> ModelData:
+def extract_chosen_metadata(metadata, training_type, person_index):
+    if training_type == "Height":
+        print(type(metadata["height"]))
+        print(metadata["height"])
+        return metadata["height"]
+    elif training_type == "Weight":
+        print(type(metadata["weight"]))
+        print(metadata["weight"])
+        return metadata["weight"]
+
+    return (1 if metadata["gender"] == "female" else 0) if training_type == "Gender" else person_index
+
+def parse_features_from_data(input_file: Path, training_type: str) -> ModelData:
     model_wrapper = BRICSModelWrapper(None)
     people_keys = {}
     feature_keys = {}
@@ -62,7 +74,7 @@ def parse_features_from_data(input_file: Path) -> ModelData:
                 metadata = json.loads(f.readline())
                 record = f.readline()
                 while record:
-                    labels.append(person_index)
+                    labels.append(extract_chosen_metadata(metadata=metadata, training_type=training_type, person_index=person_index))
                     feature_vector = parse_record(record)
                     data.append(feature_vector)
                     record = f.readline()

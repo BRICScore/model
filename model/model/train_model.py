@@ -1,3 +1,5 @@
+# Training for Identification
+
 from pathlib import Path
 
 from sklearn.metrics import confusion_matrix
@@ -10,7 +12,7 @@ from .hyperparameters import *
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from torch import nn, Tensor
+from torch import nn, Tensor, tensor
 from torch.utils.data import TensorDataset, DataLoader
 
 def display_confusion_matrix(classes, preds, accuracy, show=True):
@@ -32,16 +34,17 @@ def display_confusion_matrix(classes, preds, accuracy, show=True):
 
     plt.figure(figsize=(6,5))
 
-def train_model():
+def train_model(training_type="Identification"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model_data = parse_features_from_data(Path("./data/features"))
+    model_data = parse_features_from_data(Path("./data/features"), training_type=training_type)
+    print(model_data.feature_data.labels)
     # print(model_data.feature_data.data)
     # print(model_data.feature_data.data.size())
     # print(model_data.feature_data.labels)
     # print(model_data.feature_data.labels.size())
 
     # print(model_data.model_wrapper.people_keys)
-    class_count = len(model_data.model_wrapper.people_keys)
+    class_count = len(model_data.model_wrapper.people_keys) if training_type == "Identification" else 2
     # print(model_data.model_wrapper.feature_keys)
     feature_count = len(model_data.model_wrapper.feature_keys)
     model_data.model_wrapper.model = BRICSModel(feature_count=feature_count, n_classes=class_count)

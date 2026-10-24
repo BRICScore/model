@@ -214,3 +214,4 @@ temp
 model/scaler.pkl
 confusion_matrix.jpg
 temp.jpg
+*.jpg

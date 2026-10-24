@@ -51,6 +51,9 @@ def load_features_from_database_zip(feature_data: FeatureData) -> tuple[np.ndarr
             "person_id": measurement_data.metadata.labels.person_data.person_id,
             "condition": measurement_data.metadata.labels.person_data.condition,
             "activity": measurement_data.metadata.labels.activity,
+            "gender": measurement_data.metadata.labels.person_data.gender,
+            "height": measurement_data.metadata.labels.person_data.height,
+            "weight": measurement_data.metadata.labels.person_data.weight,
             "timestamp": measurement_data.metadata.timestamp,
             "duration_ms": measurement_data.metadata.duration_ms,
             "filepath_raw": str(measurement_data.metadata.filepath_raw),
@@ -108,6 +111,9 @@ def get_feature_data(feature_data: FeatureData, metadata_rows: list):
         metadata["person_id"] = metadata_rows[i]["person_id"]
         metadata["condition"] = metadata_rows[i]["condition"]
         metadata["activity"] = metadata_rows[i]["activity"]
+        metadata["weight"] = metadata_rows[i]["weight"]
+        metadata["height"] = metadata_rows[i]["height"]
+        metadata["gender"] = metadata_rows[i]["gender"]
 
         out_path = feature_data_folder / f"features_{metadata["person_id"]}.jsonl"
         with out_path.open("w", encoding="utf-8") as f:
@@ -139,6 +145,7 @@ def download_from_db():
 
     feature_data = FeatureData()
     feature_data.features, metadata_rows = load_features_from_database_zip(feature_data=feature_data)
+    print(metadata_rows)
     # print(feature_data.features)
 
     get_feature_data(feature_data=feature_data, metadata_rows=metadata_rows)
