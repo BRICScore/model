@@ -148,8 +148,10 @@ def train_model(training_type="Identification"):
         features, labels = model_data.feature_data.data[test_data_indices], model_data.feature_data.labels[test_data_indices]
         preds = model(features).squeeze(-1)
         avg_error = (preds - labels).float().mean()
-        mse = nn.functional.mse_loss(preds.float(), labels.float())
-        print(f"MSE is: {mse.item()}")
+        rmse = torch.sqrt(
+            nn.functional.mse_loss(preds.float(), labels.float())
+        )
+        print(f"RMSE is: {rmse.item()}")
         # if acc.item() > 0.85:
-        display_numeric_error(labels, preds, mse=mse, show=False)
+        display_numeric_error(labels, preds, mse=rmse, show=False)
     return model_data
