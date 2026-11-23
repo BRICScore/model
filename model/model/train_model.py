@@ -66,18 +66,33 @@ def train_model(training_type="Identification"):
     model_data.model_wrapper.parameters["optimizer"] = optimizer
 
     # data loaders
-    dataset_size = len(model_data.feature_data.data)
-    train_size = int(0.8 * dataset_size)
-    test_size = dataset_size - train_size
-    data_indices = torch.randperm(dataset_size)
-    train_data_indices = data_indices[:train_size]
-    test_data_indices = data_indices[train_size:]
+    people_dataset_size = None # number of people to choose randomly for training and evaluation
+    #should be set to "None" for regular usage outside experiments
+
+    labels = model_data.feature_data.labels
+    person_ids = labels.argmax(dim=1) if labels.dim() > 1 else labels
+    selected_people = torch.unique(person_ids)
+    selected_people = selected_people[torch.randperm(len(selected_people))[:people_dataset_size]]
+
+    train_idx_list, test_idx_list = [], []
+    for person in selected_people:
+        person_indices = torch.nonzero(person_ids == person, as_tuple=True)[0]
+        n = len(person_indices)
+        if n < 2:
+            raise ValueError(f"Person {person.item()} has only {n} sample(s); needs at least 2 to be in both train and test.")
+
+        person_indices = person_indices[torch.randperm(n)]
+        n_train = min(max(int(0.8 * n), 1), n - 1)
+        train_idx_list.append(person_indices[:n_train])
+        test_idx_list.append(person_indices[n_train:])
+
+    train_data_indices = torch.cat(train_idx_list)
+    test_data_indices = torch.cat(test_idx_list)
 
     train_dataset = TensorDataset(model_data.feature_data.data[train_data_indices], model_data.feature_data.labels[train_data_indices])
     model_data.train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
     test_dataset = TensorDataset(model_data.feature_data.data[test_data_indices], model_data.feature_data.labels[test_data_indices])
     model_data.test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-    
     # ---- training loop ----
     for epoch in range(EPOCHS):
         optimizer.zero_grad()
