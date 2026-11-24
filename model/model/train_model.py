@@ -36,7 +36,9 @@ def display_confusion_matrix(classes, preds, accuracy, show=True):
 
 def train_model(training_type="Identification"):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    model_data_copy = parse_features_from_data(Path("./data/features"), training_type="Identification")
     model_data = parse_features_from_data(Path("./data/features"), training_type=training_type)
+    assert torch.equal(model_data.feature_data.data, model_data_copy.feature_data.data)
     print(model_data.feature_data.labels)
     # print(model_data.feature_data.data)
     # print(model_data.feature_data.data.size())
@@ -66,11 +68,10 @@ def train_model(training_type="Identification"):
     model_data.model_wrapper.parameters["optimizer"] = optimizer
 
     # data loaders
-    people_dataset_size = None # number of people to choose randomly for training and evaluation
+    person_labels = model_data_copy.feature_data.labels
+    person_ids = person_labels.argmax(dim=1) if person_labels.dim() > 1 else person_labels
+    people_dataset_size = 10 # number of people to choose randomly for training and evaluation
     #should be set to "None" for regular usage outside experiments
-
-    labels = model_data.feature_data.labels
-    person_ids = labels.argmax(dim=1) if labels.dim() > 1 else labels
     selected_people = torch.unique(person_ids)
     selected_people = selected_people[torch.randperm(len(selected_people))[:people_dataset_size]]
 
