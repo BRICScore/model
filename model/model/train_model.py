@@ -70,7 +70,7 @@ def train_model(training_type="Identification"):
     # data loaders
     person_labels = model_data_copy.feature_data.labels
     person_ids = person_labels.argmax(dim=1) if person_labels.dim() > 1 else person_labels
-    people_dataset_size = 10 # number of people to choose randomly for training and evaluation
+    people_dataset_size = None # number of people to choose randomly for training and evaluation
     #should be set to "None" for regular usage outside experiments
     selected_people = torch.unique(person_ids)
     selected_people = selected_people[torch.randperm(len(selected_people))[:people_dataset_size]]

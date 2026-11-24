@@ -62,7 +62,7 @@ def display_numeric_error(values, preds, mse, show=True):
 
     ax.set_xlabel("Actual values")
     ax.set_ylabel("Predicted values")
-    ax.set_title(f"Numeric Prediction, average error: {float(mse):.4f}")
+    ax.set_title(f"Numeric Prediction, average error: {float(mse):.2f}")
     ax.legend(loc="best")
     ax.grid(True, linestyle=":", alpha=0.4)
 
@@ -151,7 +151,7 @@ def train_model(training_type="Identification"):
         rmse = torch.sqrt(
             nn.functional.mse_loss(preds.float(), labels.float())
         )
-        print(f"RMSE is: {rmse.item()}")
+        print(f"RMSE is: {rmse.item():.2f}")
         # if acc.item() > 0.85:
         display_numeric_error(labels, preds, mse=rmse, show=False)
     return model_data
