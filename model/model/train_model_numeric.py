@@ -116,9 +116,15 @@ def train_model(training_type="Identification"):
     train_data_indices = data_indices[:train_size]
     test_data_indices = data_indices[train_size:]
 
-    train_dataset = TensorDataset(model_data.feature_data.data[train_data_indices], model_data.feature_data.labels[train_data_indices])
+    labels = model_data.feature_data.labels.float()
+    label_mean = labels[train_data_indices].mean()
+    label_std = labels[train_data_indices].std().clamp_min(1e-8)
+    scaled_labels = (labels - label_mean) / label_std
+    print(scaled_labels)
+
+    train_dataset = TensorDataset(model_data.feature_data.data[train_data_indices], scaled_labels[train_data_indices])
     model_data.train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    test_dataset = TensorDataset(model_data.feature_data.data[test_data_indices], model_data.feature_data.labels[test_data_indices])
+    test_dataset = TensorDataset(model_data.feature_data.data[test_data_indices], scaled_labels[test_data_indices])
     model_data.test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
     
     # ---- training loop ----
@@ -145,11 +151,11 @@ def train_model(training_type="Identification"):
         print()
         print("-----Beginning of test section-----")
 
-        features, labels = model_data.feature_data.data[test_data_indices], model_data.feature_data.labels[test_data_indices]
-        preds = model(features).squeeze(-1)
-        avg_error = (preds - labels).float().mean()
+        features, labels = model_data.feature_data.data[test_data_indices], model_data.feature_data.labels[test_data_indices].float()
+        preds = model(features).squeeze(-1) * label_std + label_mean
+        avg_error = (preds - labels).mean()
         rmse = torch.sqrt(
-            nn.functional.mse_loss(preds.float(), labels.float())
+            nn.functional.mse_loss(preds, labels)
         )
         print(f"RMSE is: {rmse.item():.2f}")
         # if acc.item() > 0.85:
